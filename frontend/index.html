@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ObjectDistance — Detection &amp; Spatial Estimation</title>
+<style>
+  :root {
+    --bg: #0b1418;
+    --bg-grid: #0f1c22;
+    --panel: #101c22;
+    --line: #1d3038;
+    --cyan: #4fd6c4;
+    --amber: #e8a23a;
+    --text: #d7e4e2;
+    --text-dim: #6f8a87;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--text);
+    font-family: 'Courier New', ui-monospace, monospace;
+    min-height: 100vh;
+  }
+  header {
+    border-bottom: 1px solid var(--line);
+    padding: 28px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  header h1 {
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--cyan);
+    font-weight: 600;
+  }
+  header h1 span { color: var(--amber); }
+  header .meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+  main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px;
+  }
+  .panel {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .panel-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    border-bottom: 1px dashed var(--line);
+    padding-bottom: 8px;
+  }
+  .drop-zone {
+    border: 1px dashed var(--line);
+    padding: 50px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--cyan);
+  }
+  .drop-zone p { margin: 6px 0; color: var(--text-dim); font-size: 13px; }
+  .drop-zone .icon { font-size: 28px; color: var(--cyan); margin-bottom: 10px; }
+  input[type=file] { display: none; }
+  .controls {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+  label.fl { font-size: 11px; color: var(--text-dim); letter-spacing: 0.05em; }
+  input[type=number] {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 6px 10px;
+    font-family: inherit;
+    width: 100px;
+  }
+  button {
+    background: transparent;
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    padding: 10px 22px;
+    font-family: inherit;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  button:hover:not(:disabled) { background: var(--cyan); color: var(--bg); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .result-img-wrap { text-align: center; }
+  .result-img-wrap img {
+    max-width: 100%;
+    border: 1px solid var(--line);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--text-dim); font-weight: 400; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
+  td.amber { color: var(--amber); }
+  td.cyan { color: var(--cyan); }
+
+  .status { font-size: 12px; color: var(--text-dim); margin-top: 14px; }
+  .status.error { color: #e8704f; }
+
+  footer {
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 30px;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Object<span>Distance</span> // detection + spatial estimation</h1>
+  <div class="meta">monocular cv demo · public model</div>
+</header>
+
+<main>
+
+  <div class="panel">
+    <div class="panel-label">01 — Input Image</div>
+    <div class="drop-zone" id="dropZone">
+      <div class="icon">⌖</div>
+      <p>drag &amp; drop an image, or click to browse</p>
+      <p style="font-size:11px;">objects detectable: bottle, cup, laptop, book, phone, etc. (COCO classes)</p>
+    </div>
+    <input type="file" id="fileInput" accept="image/*">
+
+    <div class="controls">
+      <div>
+        <label class="fl">FOCAL LENGTH (px)</label><br>
+        <input type="number" id="focalLength" value="700">
+      </div>
+      <button id="runBtn" disabled>Run Detection</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="panel" id="resultPanel" style="display:none;">
+    <div class="panel-label">02 — Annotated Output</div>
+    <div class="result-img-wrap">
+      <img id="resultImg" alt="annotated result">
+    </div>
+  </div>
+
+  <div class="panel" id="detectionsPanel" style="display:none;">
+    <div class="panel-label">03 — Detected Objects</div>
+    <table id="detectionsTable">
+      <thead>
+        <tr><th>Class</th><th>Confidence</th><th>Dist. From Camera</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="panel" id="pairwisePanel" style="display:none;">
+    <div class="panel-label">04 — Estimated Inter-Object Distance</div>
+    <table id="pairwiseTable">
+      <thead>
+        <tr><th>Object A</th><th>Object B</th><th>Estimated Distance</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</main>
+
+<footer>
+  built as a portfolio demo · monocular distance estimation is approximate, not calibrated for production use
+</footer>
+
+<script>
+const API_BASE = "http://localhost:8000";
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const runBtn = document.getElementById('runBtn');
+const statusEl = document.getElementById('status');
+const resultPanel = document.getElementById('resultPanel');
+const resultImg = document.getElementById('resultImg');
+const detectionsPanel = document.getElementById('detectionsPanel');
+const detectionsTable = document.querySelector('#detectionsTable tbody');
+const pairwisePanel = document.getElementById('pairwisePanel');
+const pairwiseTable = document.querySelector('#pairwiseTable tbody');
+
+let selectedFile = null;
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  selectedFile = file;
+  dropZone.querySelector('p').textContent = `selected: ${file.name}`;
+  runBtn.disabled = false;
+  statusEl.textContent = '';
+  statusEl.className = 'status';
+}
+
+runBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  runBtn.disabled = true;
+  statusEl.textContent = 'running inference...';
+  statusEl.className = 'status';
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  formData.append('focal_length', document.getElementById('focalLength').value);
+
+  try {
+    const res = await fetch(`${API_BASE}/detect`, { method: 'POST', body: formData });
+    if (!res.ok) throw new Error(`server returned ${res.status}`);
+    const data = await res.json();
+
+    resultImg.src = `data:image/jpeg;base64,${data.annotated_image_base64}`;
+    resultPanel.style.display = 'block';
+
+    detectionsTable.innerHTML = '';
+    data.detections.forEach(d => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${d.class_name}</td><td class="cyan">${d.confidence}</td><td class="amber">${d.distance_from_camera_cm} cm</td>`;
+      detectionsTable.appendChild(row);
+    });
+    detectionsPanel.style.display = data.detections.length ? 'block' : 'none';
+
+    pairwiseTable.innerHTML = '';
+    data.pairwise_distances.forEach(p => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${p.object_a}</td><td>${p.object_b}</td><td class="amber">${p.estimated_distance_cm} cm</td>`;
+      pairwiseTable.appendChild(row);
+    });
+    pairwisePanel.style.display = data.pairwise_distances.length ? 'block' : 'none';
+
+    statusEl.textContent = `done — ${data.detections.length} object(s) detected.`;
+  } catch (err) {
+    statusEl.textContent = `error: ${err.message}. is the backend running on ${API_BASE}?`;
+    statusEl.className = 'status error';
+  } finally {
+    runBtn.disabled = false;
+  }
+});
+</script>
+
+</body>
+</html>

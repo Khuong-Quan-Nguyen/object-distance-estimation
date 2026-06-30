@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+*.egg-info/
+
+# YOLO downloaded weights (re-downloads automatically on first run)
+*.pt
+
+# Sample/test images used for local testing
+images/
+sample.jpg
+
+# OS junk
+.DS_Store
+Thumbs.db
