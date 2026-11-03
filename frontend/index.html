@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ObjectDistance — Detection &amp; Spatial Estimation</title>
+<title>PipeSpacing — Pipe Rack Inspection</title>
 <style>
   :root {
     --bg: #0b1418;
@@ -12,6 +12,7 @@
     --line: #1d3038;
     --cyan: #4fd6c4;
     --amber: #e8a23a;
+    --red: #e8503c;
     --text: #d7e4e2;
     --text-dim: #6f8a87;
   }
@@ -29,10 +30,12 @@
   }
   header {
     border-bottom: 1px solid var(--line);
-    padding: 28px 40px;
+    padding: 24px 40px;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
   }
   header h1 {
     font-size: 18px;
@@ -43,16 +46,9 @@
     font-weight: 600;
   }
   header h1 span { color: var(--amber); }
-  header .meta {
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.05em;
-  }
-  main {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 40px;
-  }
+  header .meta { font-size: 11px; color: var(--text-dim); letter-spacing: 0.05em; }
+  header a { color: var(--amber); }
+  main { max-width: 1200px; margin: 0 auto; padding: 32px 40px; }
   .panel {
     border: 1px solid var(--line);
     background: var(--panel);
@@ -70,33 +66,32 @@
   }
   .drop-zone {
     border: 1px dashed var(--line);
-    padding: 50px 20px;
+    padding: 40px 20px;
     text-align: center;
     cursor: pointer;
     transition: border-color 0.15s ease;
   }
-  .drop-zone:hover, .drop-zone.dragover {
-    border-color: var(--cyan);
-  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--cyan); }
   .drop-zone p { margin: 6px 0; color: var(--text-dim); font-size: 13px; }
   .drop-zone .icon { font-size: 28px; color: var(--cyan); margin-bottom: 10px; }
   input[type=file] { display: none; }
   .controls {
     display: flex;
-    gap: 16px;
-    align-items: center;
+    gap: 18px;
+    align-items: flex-end;
     margin-top: 18px;
     flex-wrap: wrap;
   }
-  label.fl { font-size: 11px; color: var(--text-dim); letter-spacing: 0.05em; }
-  input[type=number] {
+  label.fl { font-size: 11px; color: var(--text-dim); letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
+  input[type=number], select {
     background: var(--bg);
     border: 1px solid var(--line);
     color: var(--text);
     padding: 6px 10px;
     font-family: inherit;
-    width: 100px;
+    width: 130px;
   }
+  select { width: 170px; }
   button {
     background: transparent;
     border: 1px solid var(--cyan);
@@ -112,169 +107,251 @@
   button:hover:not(:disabled) { background: var(--cyan); color: var(--bg); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  .result-img-wrap { text-align: center; }
-  .result-img-wrap img {
-    max-width: 100%;
-    border: 1px solid var(--line);
-  }
+  .images { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .images img { width: 100%; border: 1px solid var(--line); display: block; }
+  .images .cap { font-size: 10px; color: var(--text-dim); margin-top: 6px; letter-spacing: 0.08em; text-transform: uppercase; }
+  @media (max-width: 800px) { .images { grid-template-columns: 1fr; } main { padding: 20px 16px; } header { padding: 20px 16px; } }
 
-  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .stats { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 18px; }
+  .stat .v { font-size: 26px; color: var(--cyan); }
+  .stat .v.amber { color: var(--amber); }
+  .stat .v.red { color: var(--red); }
+  .stat .k { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   th { color: var(--text-dim); font-weight: 400; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
   td.amber { color: var(--amber); }
   td.cyan { color: var(--cyan); }
+  tr.flag td { color: var(--red); }
+  #queueTable tr { cursor: pointer; }
+  #queueTable tr.sel td { background: #142a30; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
 
   .status { font-size: 12px; color: var(--text-dim); margin-top: 14px; }
-  .status.error { color: #e8704f; }
-
-  footer {
-    text-align: center;
-    font-size: 10px;
-    color: var(--text-dim);
-    padding: 30px;
-    letter-spacing: 0.05em;
-  }
+  .status.error { color: var(--red); }
+  footer { text-align: center; font-size: 10px; color: var(--text-dim); padding: 30px; letter-spacing: 0.05em; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Object<span>Distance</span> // detection + spatial estimation</h1>
-  <div class="meta">monocular cv demo · public model</div>
+  <h1>Pipe<span>Spacing</span> // rack inspection</h1>
+  <div class="meta">yolov8 pipe detector · depth anything v2 · <a href="review.html">annotation review →</a></div>
 </header>
 
 <main>
 
   <div class="panel">
-    <div class="panel-label">01 — Input Image</div>
+    <div class="panel-label">01 — Input Images</div>
     <div class="drop-zone" id="dropZone">
       <div class="icon">⌖</div>
-      <p>drag &amp; drop an image, or click to browse</p>
-      <p style="font-size:11px;">objects detectable: bottle, cup, laptop, book, phone, etc. (COCO classes)</p>
+      <p id="dropText">drag &amp; drop photos of pipe racks, or click to browse</p>
+      <p style="font-size:11px;">multiple images are scanned in sequence · straight horizontal / vertical runs are measured</p>
     </div>
-    <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="fileInput" accept="image/*" multiple>
 
     <div class="controls">
       <div>
-        <label class="fl">FOCAL LENGTH (px)</label><br>
-        <input type="number" id="focalLength" value="700">
+        <label class="fl">DEPTH SOURCE</label>
+        <select id="mode">
+          <option value="auto">fused (depth + OD)</option>
+          <option value="depth">depth model only</option>
+          <option value="reference">known OD only</option>
+        </select>
       </div>
-      <button id="runBtn" disabled>Run Detection</button>
+      <div>
+        <label class="fl">PIPE SIZE (OD)</label>
+        <select id="od"></select>
+      </div>
+      <div>
+        <label class="fl">MIN CLEARANCE (mm)</label>
+        <input type="number" id="minClear" value="25">
+      </div>
+      <div>
+        <label class="fl">CAMERA HFOV (°)</label>
+        <input type="number" id="hfov" value="65">
+      </div>
+      <div>
+        <label class="fl">SCENE</label>
+        <select id="scene"><option value="false">indoor plant</option><option value="true">outdoor / refinery</option></select>
+      </div>
+      <button id="runBtn" disabled>Scan</button>
     </div>
     <div class="status" id="status"></div>
   </div>
 
-  <div class="panel" id="resultPanel" style="display:none;">
-    <div class="panel-label">02 — Annotated Output</div>
-    <div class="result-img-wrap">
-      <img id="resultImg" alt="annotated result">
+  <div class="panel" id="queuePanel" style="display:none;">
+    <div class="panel-label">02 — Scan Results</div>
+    <div class="stats" id="stats"></div>
+    <div class="table-wrap">
+      <table id="queueTable">
+        <thead><tr><th>Image</th><th>Pipes</th><th>Pairs</th><th>Tight</th><th>Min Gap</th><th>Mode</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 
-  <div class="panel" id="detectionsPanel" style="display:none;">
-    <div class="panel-label">03 — Detected Objects</div>
-    <table id="detectionsTable">
-      <thead>
-        <tr><th>Class</th><th>Confidence</th><th>Dist. From Camera</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <div class="panel" id="pairwisePanel" style="display:none;">
-    <div class="panel-label">04 — Estimated Inter-Object Distance</div>
-    <table id="pairwiseTable">
-      <thead>
-        <tr><th>Object A</th><th>Object B</th><th>Estimated Distance</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <div class="panel" id="detailPanel" style="display:none;">
+    <div class="panel-label" id="detailLabel">03 — Detail</div>
+    <div class="images">
+      <div><img id="resultImg" alt="annotated result"><div class="cap">detections + centreline spacing (c-c) / wall clearance (gap)</div></div>
+      <div id="depthWrap"><img id="depthImg" alt="depth map"><div class="cap">estimated depth (bright = near)</div></div>
+    </div>
+    <div class="two" style="margin-top:24px;">
+      <div class="table-wrap">
+        <div class="panel-label">Pipes</div>
+        <table id="pipesTable">
+          <thead><tr><th>ID</th><th>Run</th><th>Conf</th><th>Depth</th><th>OD</th><th>Size</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <div class="panel-label">Neighbouring Pairs</div>
+        <table id="pairsTable">
+          <thead><tr><th>Pair</th><th>Run</th><th>Spacing c-c</th><th>Clearance</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
 </main>
 
 <footer>
-  built as a portfolio demo · monocular distance estimation is approximate, not calibrated for production use
+  portfolio demo on public images · monocular depth is approximate — use an RGB-D camera or a known pipe size for real measurements
 </footer>
 
 <script>
-const API_BASE = "http://localhost:8000";
+const NPS = [['none', ''], ['1"', 33.4], ['2"', 60.3], ['3"', 88.9], ['4"', 114.3], ['6"', 168.3],
+             ['8"', 219.1], ['10"', 273.1], ['12"', 323.9], ['16"', 406.4], ['24"', 610.0]];
+const $ = (id) => document.getElementById(id);
+const odSel = $('od');
+NPS.forEach(([k, v]) => {
+  const o = document.createElement('option');
+  o.value = v; o.textContent = v ? `${k} NPS · ${v} mm` : 'unknown (estimate)';
+  if (k === '4"') o.selected = true;
+  odSel.appendChild(o);
+});
 
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const runBtn = document.getElementById('runBtn');
-const statusEl = document.getElementById('status');
-const resultPanel = document.getElementById('resultPanel');
-const resultImg = document.getElementById('resultImg');
-const detectionsPanel = document.getElementById('detectionsPanel');
-const detectionsTable = document.querySelector('#detectionsTable tbody');
-const pairwisePanel = document.getElementById('pairwisePanel');
-const pairwiseTable = document.querySelector('#pairwiseTable tbody');
+let files = [];
+const results = [];   // {name, data}
 
-let selectedFile = null;
-
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', (e) => {
+$('dropZone').addEventListener('click', () => $('fileInput').click());
+$('dropZone').addEventListener('dragover', (e) => { e.preventDefault(); $('dropZone').classList.add('dragover'); });
+$('dropZone').addEventListener('dragleave', () => $('dropZone').classList.remove('dragover'));
+$('dropZone').addEventListener('drop', (e) => {
   e.preventDefault();
-  dropZone.classList.remove('dragover');
-  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  $('dropZone').classList.remove('dragover');
+  setFiles(e.dataTransfer.files);
 });
-fileInput.addEventListener('change', (e) => {
-  if (e.target.files.length) handleFile(e.target.files[0]);
-});
+$('fileInput').addEventListener('change', (e) => setFiles(e.target.files));
 
-function handleFile(file) {
-  selectedFile = file;
-  dropZone.querySelector('p').textContent = `selected: ${file.name}`;
-  runBtn.disabled = false;
-  statusEl.textContent = '';
-  statusEl.className = 'status';
+function setFiles(list) {
+  files = [...list].filter(f => f.type.startsWith('image/'));
+  $('dropText').textContent = files.length === 1 ? `selected: ${files[0].name}` : `selected: ${files.length} images`;
+  $('runBtn').disabled = !files.length;
+  setStatus('');
 }
 
-runBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
-  runBtn.disabled = true;
-  statusEl.textContent = 'running inference...';
-  statusEl.className = 'status';
+function setStatus(text, error = false) {
+  $('status').textContent = text;
+  $('status').className = error ? 'status error' : 'status';
+}
 
-  const formData = new FormData();
-  formData.append('file', selectedFile);
-  formData.append('focal_length', document.getElementById('focalLength').value);
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
 
-  try {
-    const res = await fetch(`${API_BASE}/detect`, { method: 'POST', body: formData });
-    if (!res.ok) throw new Error(`server returned ${res.status}`);
-    const data = await res.json();
+$('runBtn').addEventListener('click', async () => {
+  const mode = $('mode').value;
+  const od = odSel.value;
+  if (mode === 'reference' && !od) return setStatus('known-OD mode needs a pipe size.', true);
 
-    resultImg.src = `data:image/jpeg;base64,${data.annotated_image_base64}`;
-    resultPanel.style.display = 'block';
+  $('runBtn').disabled = true;
+  results.length = 0;
+  $('queueTable').querySelector('tbody').innerHTML = '';
+  $('queuePanel').style.display = 'block';
 
-    detectionsTable.innerHTML = '';
-    data.detections.forEach(d => {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${d.class_name}</td><td class="cyan">${d.confidence}</td><td class="amber">${d.distance_from_camera_cm} cm</td>`;
-      detectionsTable.appendChild(row);
-    });
-    detectionsPanel.style.display = data.detections.length ? 'block' : 'none';
-
-    pairwiseTable.innerHTML = '';
-    data.pairwise_distances.forEach(p => {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${p.object_a}</td><td>${p.object_b}</td><td class="amber">${p.estimated_distance_cm} cm</td>`;
-      pairwiseTable.appendChild(row);
-    });
-    pairwisePanel.style.display = data.pairwise_distances.length ? 'block' : 'none';
-
-    statusEl.textContent = `done — ${data.detections.length} object(s) detected.`;
-  } catch (err) {
-    statusEl.textContent = `error: ${err.message}. is the backend running on ${API_BASE}?`;
-    statusEl.className = 'status error';
-  } finally {
-    runBtn.disabled = false;
+  for (let i = 0; i < files.length; i++) {
+    setStatus(`scanning ${i + 1}/${files.length}: ${files[i].name} ...`);
+    const fd = new FormData();
+    fd.append('file', files[i]);
+    fd.append('mode', mode);
+    if (od) fd.append('od_mm', od);
+    fd.append('min_clearance_mm', $('minClear').value);
+    fd.append('hfov_deg', $('hfov').value);
+    fd.append('outdoor', $('scene').value);
+    try {
+      const res = await fetch('/api/analyze', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `server returned ${res.status}`);
+      const data = await res.json();
+      results.push({ name: files[i].name, data });
+      addQueueRow(results.length - 1);
+      if (results.length === 1) showDetail(0);
+    } catch (err) {
+      setStatus(`error on ${files[i].name}: ${err.message}. is the backend running?`, true);
+      $('runBtn').disabled = false;
+      return;
+    }
   }
+  renderStats();
+  setStatus(`done — ${files.length} image(s) scanned with ${results[0]?.data.detector ?? 'detector'}.`);
+  $('runBtn').disabled = false;
 });
+
+function minGap(d) {
+  return d.pairs.length ? Math.min(...d.pairs.map(p => p.clearance_mm)) : null;
+}
+
+function addQueueRow(i) {
+  const { name, data } = results[i];
+  const g = minGap(data);
+  const tr = document.createElement('tr');
+  if (data.flagged) tr.className = 'flag';
+  tr.innerHTML = `<td>${esc(name)}</td><td class="cyan">${data.pipes.length}</td><td>${data.pairs.length}</td>
+    <td>${data.flagged}</td><td class="amber">${g === null ? '—' : g.toFixed(0) + ' mm'}</td><td>${data.mode}</td>`;
+  tr.addEventListener('click', () => showDetail(i));
+  $('queueTable').querySelector('tbody').appendChild(tr);
+  renderStats();
+}
+
+function renderStats() {
+  const pipes = results.reduce((s, r) => s + r.data.pipes.length, 0);
+  const pairs = results.reduce((s, r) => s + r.data.pairs.length, 0);
+  const flagged = results.reduce((s, r) => s + r.data.flagged, 0);
+  $('stats').innerHTML = [
+    ['images', results.length, ''], ['pipes', pipes, ''], ['pairs measured', pairs, 'amber'],
+    ['below min clearance', flagged, flagged ? 'red' : ''],
+  ].map(([k, v, c]) => `<div class="stat"><div class="v ${c}">${v}</div><div class="k">${k}</div></div>`).join('');
+}
+
+function showDetail(i) {
+  const { name, data } = results[i];
+  [...$('queueTable').querySelectorAll('tbody tr')].forEach((tr, j) => tr.classList.toggle('sel', i === j));
+  $('detailPanel').style.display = 'block';
+  $('detailLabel').textContent = `03 — Detail · ${name} · mode: ${data.mode} · f = ${data.focal_px}px`;
+  $('resultImg').src = `data:image/jpeg;base64,${data.annotated_image_base64}`;
+  if (data.depth_image_base64) {
+    $('depthImg').src = `data:image/jpeg;base64,${data.depth_image_base64}`;
+    $('depthWrap').style.display = 'block';
+  } else {
+    $('depthWrap').style.display = 'none';
+  }
+
+  const flaggedIds = new Set(data.pairs.filter(p => p.flagged).flatMap(p => [p.a, p.b]));
+  $('pipesTable').querySelector('tbody').innerHTML = data.pipes.map(p => `
+    <tr class="${flaggedIds.has(p.id) ? 'flag' : ''}"><td>P${p.id}</td><td>${p.orientation}</td>
+    <td class="cyan">${p.confidence.toFixed(2)}</td><td>${p.depth_m != null ? p.depth_m.toFixed(2) + ' m' : '—'}</td>
+    <td class="amber">${p.od_mm != null ? p.od_mm.toFixed(0) + ' mm' : '—'}</td><td>${p.nps ?? '—'}</td></tr>`).join('');
+
+  $('pairsTable').querySelector('tbody').innerHTML = data.pairs.length ? data.pairs.map(p => `
+    <tr class="${p.flagged ? 'flag' : ''}"><td>P${p.a} ↔ P${p.b}</td><td>${p.orientation}</td>
+    <td class="amber">${p.spacing_mm.toFixed(0)} mm</td><td>${p.clearance_mm.toFixed(0)} mm${p.flagged ? ' ⚠' : ''}</td></tr>`).join('')
+    : '<tr><td colspan="4" style="color:var(--text-dim)">no neighbouring parallel runs found</td></tr>';
+}
 </script>
 
 </body>

@@ -1,0 +1,12 @@
+# Install PyTorch first, matched to your GPU (CUDA 13.0 build shown):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+# CPU-only works too, just slower.
+ultralytics>=8.3
+transformers>=4.45
+fastapi
+uvicorn[standard]
+python-multipart
+pillow
+numpy
+requests
+pytest

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PipeSpacing — Label Review</title>
+<style>
+  :root {
+    --bg: #0b1418;
+    --panel: #101c22;
+    --line: #1d3038;
+    --cyan: #4fd6c4;
+    --amber: #e8a23a;
+    --red: #e8503c;
+    --text: #d7e4e2;
+    --text-dim: #6f8a87;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', ui-monospace, monospace;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+  header {
+    border-bottom: 1px solid var(--line);
+    padding: 14px 24px;
+    display: flex;
+    gap: 24px;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0; color: var(--cyan); }
+  header h1 span { color: var(--amber); }
+  header a { color: var(--amber); font-size: 11px; }
+  .counts { font-size: 11px; color: var(--text-dim); }
+  .counts b { color: var(--text); font-weight: 400; }
+  .layout { display: grid; grid-template-columns: 240px 1fr 220px; min-height: 0; }
+  @media (max-width: 900px) {
+    html, body { height: auto; }
+    body { display: block; }
+    .layout { grid-template-columns: 1fr; }
+    aside { max-height: 180px; border-right: 0; border-bottom: 1px solid var(--line); }
+    aside.right { max-height: none; border-left: 0; }
+    .canvas-wrap { min-height: 60vh; }
+    canvas { max-height: 70vh; }
+  }
+  aside { border-right: 1px solid var(--line); overflow-y: auto; background: var(--panel); }
+  aside.right { border-right: 0; border-left: 1px solid var(--line); padding: 16px; font-size: 11px; color: var(--text-dim); line-height: 1.8; }
+  aside.right kbd { border: 1px solid var(--line); padding: 0 5px; color: var(--text); }
+  .filter { display: flex; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+  .filter button { flex: 1; background: none; border: 0; color: var(--text-dim); padding: 8px 0; font: inherit; font-size: 10px; text-transform: uppercase; cursor: pointer; }
+  .filter button.on { color: var(--cyan); box-shadow: inset 0 -2px var(--cyan); }
+  .item { padding: 7px 12px; font-size: 11px; cursor: pointer; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
+  .item.sel { background: #142a30; }
+  .item .s-accepted { color: var(--cyan); }
+  .item .s-rejected { color: var(--red); }
+  .item .s-pending { color: var(--text-dim); }
+  .stage { display: flex; flex-direction: column; min-height: 0; padding: 16px; gap: 12px; }
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+  .bar .name { color: var(--text-dim); margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button.act { background: transparent; border: 1px solid var(--cyan); color: var(--cyan); padding: 7px 14px; font: inherit; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; }
+  button.act.red { border-color: var(--red); color: var(--red); }
+  button.act.dim { border-color: var(--line); color: var(--text-dim); }
+  button.act:hover { filter: brightness(1.3); }
+  .canvas-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+  canvas { max-width: 100%; max-height: 100%; cursor: crosshair; border: 1px solid var(--line); }
+  .empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 40px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pipe<span>Spacing</span> // label review</h1>
+  <div class="counts" id="counts"></div>
+  <a href="index.html">← inspection</a>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="filter" id="filter">
+      <button data-f="pending" class="on">pending</button>
+      <button data-f="accepted">accepted</button>
+      <button data-f="rejected">rejected</button>
+      <button data-f="all">all</button>
+    </div>
+    <div id="list"></div>
+  </aside>
+
+  <section class="stage">
+    <div class="bar">
+      <span class="name" id="name">—</span>
+      <span id="boxCount" style="color:var(--amber)"></span>
+      <button class="act dim" id="resetBtn" title="restore auto-label draft">reset</button>
+      <button class="act red" id="rejectBtn">reject (r)</button>
+      <button class="act" id="acceptBtn">accept (a)</button>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="cv"></canvas>
+      <div class="empty" id="empty" style="display:none">no images here — run <code>python pipeline/autolabel.py</code> first</div>
+    </div>
+  </section>
+
+  <aside class="right">
+    <div style="color:var(--cyan);margin-bottom:8px;">HOW TO REVIEW</div>
+    Draft boxes come from zero-shot Grounding DINO. Fix them, then accept.<br><br>
+    <kbd>drag</kbd> draw a box<br>
+    <kbd>click</kbd> select box<br>
+    <kbd>del</kbd> delete selected<br>
+    <kbd>u</kbd> undo<br>
+    <kbd>a</kbd> accept → next<br>
+    <kbd>r</kbd> reject image → next<br>
+    <kbd>→</kbd> / <kbd>←</kbd> next / prev<br><br>
+    <div style="color:var(--cyan);margin-bottom:8px;">GUIDELINE</div>
+    One box per visible straight pipe run, tight to the pipe walls. Skip pipes thinner than ~8&nbsp;px. Reject images that are not industrial piping
+    (drawings, organs, close-ups with no full pipe).
+  </aside>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+let items = [], filter = 'pending', idx = -1;
+let cur = null;          // {name, entry, img, boxes, history}
+let sel = -1, drag = null;
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error(`${r.status}`);
+  return r.json();
+}
+
+async function loadList(keepName) {
+  const data = await api('/api/labels');
+  items = data.items;
+  const c = data.counts;
+  $('counts').innerHTML = `<b>${c.pending}</b> pending · <b>${c.accepted}</b> accepted · <b>${c.rejected}</b> rejected`;
+  renderList();
+  const v = visible();
+  if (!v.length) { showEmpty(); return; }
+  const i = keepName ? v.findIndex(it => it.name === keepName) : -1;
+  open(i >= 0 ? i : 0);
+}
+
+function visible() { return filter === 'all' ? items : items.filter(i => i.status === filter); }
+
+function renderList() {
+  $('list').innerHTML = visible().map((it, i) =>
+    `<div class="item ${i === idx ? 'sel' : ''}" data-i="${i}"><span>${it.name}</span><span class="s-${it.status}">${it.n}</span></div>`).join('');
+}
+
+$('list').addEventListener('click', (e) => {
+  const el = e.target.closest('.item');
+  if (el) open(+el.dataset.i);
+});
+$('filter').addEventListener('click', (e) => {
+  if (!e.target.dataset.f) return;
+  filter = e.target.dataset.f;
+  [...$('filter').children].forEach(b => b.classList.toggle('on', b === e.target));
+  idx = -1;
+  loadList();
+});
+
+function showEmpty() {
+  cur = null; idx = -1;
+  cv.style.display = 'none'; $('empty').style.display = 'block';
+  $('name').textContent = '—'; $('boxCount').textContent = '';
+}
+
+async function open(i) {
+  const v = visible();
+  if (i < 0 || i >= v.length) return;
+  idx = i;
+  const name = v[i].name;
+  const entry = await api(`/api/labels/${encodeURIComponent(name)}`);
+  const img = new Image();
+  img.src = `/images/${encodeURIComponent(name)}`;
+  await img.decode();
+  cur = { name, entry, img, boxes: entry.boxes.map(b => b.slice(0, 4)), history: [] };
+  sel = -1;
+  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  cv.style.display = 'block'; $('empty').style.display = 'none';
+  $('name').textContent = `${name} · ${entry.status}`;
+  renderList();
+  document.querySelector('.item.sel')?.scrollIntoView({ block: 'nearest' });
+  draw();
+}
+
+function confOf(box) {
+  const a = cur.entry.auto.find(b => b.slice(0, 4).every((v, k) => Math.abs(v - box[k]) < 0.5));
+  return a ? a[4] : null;
+}
+
+function draw() {
+  if (!cur) return;
+  const lw = Math.max(2, cv.width / 500);
+  ctx.drawImage(cur.img, 0, 0);
+  ctx.font = `${Math.max(12, cv.width / 70)}px Courier New`;
+  cur.boxes.forEach((b, i) => {
+    const [x1, y1, x2, y2] = b;
+    ctx.lineWidth = i === sel ? lw * 2 : lw;
+    ctx.strokeStyle = i === sel ? '#e8a23a' : '#4fd6c4';
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    const c = confOf(b);
+    const t = c === null ? `#${i} manual` : `#${i} ${c.toFixed(2)}`;
+    const tw = ctx.measureText(t).width;
+    ctx.fillStyle = 'rgba(10,18,22,0.8)';
+    ctx.fillRect(x1, y1, tw + 8, parseInt(ctx.font) + 6);
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.fillText(t, x1 + 4, y1 + parseInt(ctx.font));
+  });
+  if (drag && drag.moved) {
+    ctx.setLineDash([lw * 3, lw * 2]);
+    ctx.strokeStyle = '#e8a23a';
+    ctx.lineWidth = lw;
+    ctx.strokeRect(drag.x0, drag.y0, drag.x - drag.x0, drag.y - drag.y0);
+    ctx.setLineDash([]);
+  }
+  $('boxCount').textContent = `${cur.boxes.length} box${cur.boxes.length === 1 ? '' : 'es'}`;
+}
+
+function toImage(e) {
+  const r = cv.getBoundingClientRect();
+  return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height];
+}
+
+function hit(x, y) {
+  // Smallest box under the cursor, so nested pipes stay selectable.
+  let best = -1, area = Infinity;
+  cur.boxes.forEach(([x1, y1, x2, y2], i) => {
+    const a = (x2 - x1) * (y2 - y1);
+    if (x >= x1 && x <= x2 && y >= y1 && y <= y2 && a < area) { best = i; area = a; }
+  });
+  return best;
+}
+
+function snapshot() { cur.history.push(cur.boxes.map(b => b.slice())); }
+
+cv.addEventListener('mousedown', (e) => {
+  if (!cur) return;
+  const [x, y] = toImage(e);
+  drag = { x0: x, y0: y, x, y, moved: false };
+});
+window.addEventListener('mousemove', (e) => {
+  if (!drag) return;
+  const [x, y] = toImage(e);
+  drag.x = Math.max(0, Math.min(cv.width, x));
+  drag.y = Math.max(0, Math.min(cv.height, y));
+  if (Math.abs(drag.x - drag.x0) > 4 || Math.abs(drag.y - drag.y0) > 4) drag.moved = true;
+  draw();
+});
+window.addEventListener('mouseup', () => {
+  if (!drag) return;
+  if (drag.moved) {
+    snapshot();
+    const { x0, y0, x, y } = drag;
+    cur.boxes.push([Math.min(x0, x), Math.min(y0, y), Math.max(x0, x), Math.max(y0, y)]);
+    sel = cur.boxes.length - 1;
+  } else {
+    sel = hit(drag.x0, drag.y0);
+  }
+  drag = null;
+  draw();
+});
+
+async function save(status) {
+  if (!cur) return;
+  await api(`/api/labels/${encodeURIComponent(cur.name)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, boxes: cur.boxes }),
+  });
+  // Look up the next item before reloading: in a filtered view the saved one may drop out.
+  await loadList(visible()[idx + 1]?.name);
+}
+
+$('acceptBtn').onclick = () => save('accepted');
+$('rejectBtn').onclick = () => save('rejected');
+$('resetBtn').onclick = () => { if (cur) { snapshot(); cur.boxes = cur.entry.auto.map(b => b.slice(0, 4)); sel = -1; draw(); } };
+
+window.addEventListener('keydown', (e) => {
+  if (!cur) return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (sel >= 0) { snapshot(); cur.boxes.splice(sel, 1); sel = -1; draw(); }
+    e.preventDefault();
+  } else if (e.key === 'u') {
+    if (cur.history.length) { cur.boxes = cur.history.pop(); sel = -1; draw(); }
+  } else if (e.key === 'a') save('accepted');
+  else if (e.key === 'r') save('rejected');
+  else if (e.key === 'ArrowRight') open(idx + 1);
+  else if (e.key === 'ArrowLeft') open(idx - 1);
+});
+
+loadList().catch(() => {
+  showEmpty();
+  $('empty').textContent = 'cannot reach the API — start it with: uvicorn backend.main:app';
+});
+</script>
+
+</body>
+</html>
