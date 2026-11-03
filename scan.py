@@ -25,7 +25,7 @@ from PIL import Image
 
 from pipespacing.analyze import analyze
 from pipespacing.depth import INDOOR, OUTDOOR, DepthAnythingMetric, load_depth_file
-from pipespacing.detector import PipeDetector
+from pipespacing.detector import load_detector
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
@@ -57,7 +57,7 @@ def main():
     if not files:
         ap.error(f"no images found in {args.input}")
 
-    detector = PipeDetector(args.weights)
+    detector = load_detector(args.weights)
     depth_fn = None
     if args.mode != "reference" and not args.depth_dir:
         depth_fn = DepthAnythingMetric(OUTDOOR if args.outdoor else INDOOR)

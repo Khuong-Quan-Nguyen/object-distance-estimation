@@ -108,7 +108,8 @@ class PipePair:
     orientation: str
     spacing_mm: float           # centreline to centreline
     clearance_mm: float         # outer wall to outer wall
-    flagged: bool = False
+    flagged: bool = False       # real but below the minimum clearance
+    status: str = "ok"          # "ok" | "tight" | "overlap" (measurement error)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -255,8 +256,16 @@ def pair_spacing(a: Pipe, b: Pipe, min_clearance_mm: float = 25.0) -> PipePair:
     perp = delta - delta.dot(axis) * axis
     spacing = float(np.linalg.norm(perp)) * 1000
     clearance = spacing - ((a.od_mm or 0) + (b.od_mm or 0)) / 2
+    # Solid pipes can't interpenetrate: a negative gap means loose/duplicate
+    # boxes or a wrong OD, not a clearance violation, so it isn't flagged.
+    if clearance < 0:
+        status = "overlap"
+    elif clearance < min_clearance_mm:
+        status = "tight"
+    else:
+        status = "ok"
     return PipePair(
         a.id, b.id, a.orientation,
         round(spacing, 1), round(clearance, 1),
-        flagged=clearance < min_clearance_mm,
+        flagged=status == "tight", status=status,
     )

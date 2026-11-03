@@ -125,6 +125,7 @@
   td.amber { color: var(--amber); }
   td.cyan { color: var(--cyan); }
   tr.flag td { color: var(--red); }
+  tr.overlap td { color: var(--text-dim); }
   #queueTable tr { cursor: pointer; }
   #queueTable tr.sel td { background: #142a30; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
@@ -139,7 +140,7 @@
 
 <header>
   <h1>Pipe<span>Spacing</span> // rack inspection</h1>
-  <div class="meta">yolov8 pipe detector · depth anything v2 · <a href="review.html">annotation review →</a></div>
+  <div class="meta"><span id="apiState">api: checking…</span> · depth anything v2<span id="reviewLink" style="display:none"> · <a href="review.html">annotation review →</a></span></div>
 </header>
 
 <main>
@@ -224,7 +225,9 @@
   portfolio demo on public images · monocular depth is approximate — use an RGB-D camera or a known pipe size for real measurements
 </footer>
 
+<script src="config.js"></script>
 <script>
+const API = (window.PIPESPACING_API || '').replace(/\/$/, '');
 const NPS = [['none', ''], ['1"', 33.4], ['2"', 60.3], ['3"', 88.9], ['4"', 114.3], ['6"', 168.3],
              ['8"', 219.1], ['10"', 273.1], ['12"', 323.9], ['16"', 406.4], ['24"', 610.0]];
 const $ = (id) => document.getElementById(id);
@@ -285,14 +288,14 @@ $('runBtn').addEventListener('click', async () => {
     fd.append('hfov_deg', $('hfov').value);
     fd.append('outdoor', $('scene').value);
     try {
-      const res = await fetch('/api/analyze', { method: 'POST', body: fd });
+      const res = await fetch(`${API}/api/analyze`, { method: 'POST', body: fd });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `server returned ${res.status}`);
       const data = await res.json();
       results.push({ name: files[i].name, data });
       addQueueRow(results.length - 1);
       if (results.length === 1) showDetail(0);
     } catch (err) {
-      setStatus(`error on ${files[i].name}: ${err.message}. is the backend running?`, true);
+      setStatus(`error on ${files[i].name}: ${err.message}. the API may still be starting — try again in a minute.`, true);
       $('runBtn').disabled = false;
       return;
     }
@@ -303,7 +306,8 @@ $('runBtn').addEventListener('click', async () => {
 });
 
 function minGap(d) {
-  return d.pairs.length ? Math.min(...d.pairs.map(p => p.clearance_mm)) : null;
+  const real = d.pairs.filter(p => p.status !== 'overlap');
+  return real.length ? Math.min(...real.map(p => p.clearance_mm)) : null;
 }
 
 function addQueueRow(i) {
@@ -348,10 +352,29 @@ function showDetail(i) {
     <td class="amber">${p.od_mm != null ? p.od_mm.toFixed(0) + ' mm' : '—'}</td><td>${p.nps ?? '—'}</td></tr>`).join('');
 
   $('pairsTable').querySelector('tbody').innerHTML = data.pairs.length ? data.pairs.map(p => `
-    <tr class="${p.flagged ? 'flag' : ''}"><td>P${p.a} ↔ P${p.b}</td><td>${p.orientation}</td>
-    <td class="amber">${p.spacing_mm.toFixed(0)} mm</td><td>${p.clearance_mm.toFixed(0)} mm${p.flagged ? ' ⚠' : ''}</td></tr>`).join('')
+    <tr class="${p.flagged ? 'flag' : p.status === 'overlap' ? 'overlap' : ''}"><td>P${p.a} ↔ P${p.b}</td><td>${p.orientation}</td>
+    <td class="amber">${p.spacing_mm.toFixed(0)} mm</td><td>${p.status === 'overlap'
+      ? '<span title="boxes overlap or OD is wrong: not a real measurement">overlap?</span>'
+      : `${p.clearance_mm.toFixed(0)} mm${p.flagged ? ' ⚠' : ''}`}</td></tr>`).join('')
     : '<tr><td colspan="4" style="color:var(--text-dim)">no neighbouring parallel runs found</td></tr>';
 }
+async function checkApi(attempt = 0) {
+  const el = $('apiState');
+  try {
+    const r = await fetch(`${API}/api/health`);
+    if (!r.ok) throw new Error(r.status);
+    const h = await r.json();
+    el.textContent = `api: ready · ${h.detector} · ${h.cuda ? 'gpu' : 'cpu'}`;
+    el.style.color = 'var(--cyan)';
+    $('reviewLink').style.display = h.review && !API ? 'inline' : 'none';
+  } catch {
+    el.textContent = attempt ? `api: waking up… (${attempt * 10}s)` : 'api: waking up…';
+    el.style.color = 'var(--amber)';
+    if (attempt < 30) setTimeout(() => checkApi(attempt + 1), 10000);
+    else { el.textContent = 'api: unreachable'; el.style.color = 'var(--red)'; }
+  }
+}
+checkApi();
 </script>
 
 </body>

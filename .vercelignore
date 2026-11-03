@@ -1,0 +1,9 @@
+# Vercel only serves the static frontend; the Python API is hosted elsewhere
+# (see DEPLOY.md). Keeping Python files out also stops Vercel from trying to
+# build them as serverless functions, which could never fit torch anyway.
+*
+!frontend/
+!frontend/**
+!scripts/
+!scripts/vercel-build.sh
+!vercel.json

@@ -1,11 +1,14 @@
 """
 Pipe detectors.
 
-* PipeDetector: the fine-tuned single-class YOLOv8 model when it exists,
-  falling back to zero-shot YOLO-World before training.
+* PipeDetector: the fine-tuned single-class YOLOv8 model, or zero-shot
+  YOLO-World when asked for explicitly.
 * GroundingDino: open-vocabulary auto-labeler. Much slower than YOLO, but it
   actually knows what a pipe is. YOLO-World scores pipes below 0.05 even on
   photos full of them, because pipes are barely in its training vocabulary.
+
+load_detector() picks the fine-tuned model when it exists and Grounding DINO
+otherwise, so inference works before (and without) a training run.
 """
 
 from __future__ import annotations
@@ -71,3 +74,12 @@ class GroundingDino:
         )[0]
         boxes = [tuple(float(v) for v in b) for b in r["boxes"].tolist()]
         return boxes, [float(s) for s in r["scores"].tolist()]
+
+
+def load_detector(weights: str | Path | None = None):
+    path = Path(weights) if weights else FINETUNED
+    if path.exists():
+        return PipeDetector(path)
+    if weights:
+        raise FileNotFoundError(path)
+    return GroundingDino()

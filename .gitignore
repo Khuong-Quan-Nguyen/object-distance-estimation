@@ -6,10 +6,13 @@ venv/
 *.egg-info/
 .pytest_cache/
 
-# Model weights (downloaded / trained locally)
+# Model weights (downloaded / trained locally). The fine-tuned pipe model is
+# small and is committed so the deployed API can use it.
 *.pt
 weights/
-models/
+models/*
+!models/.gitkeep
+!models/pipe_yolov8n.pt
 
 # Datasets, scan output, training runs
 data/

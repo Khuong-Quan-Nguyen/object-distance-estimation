@@ -111,7 +111,7 @@ def draw(image: Image.Image, pipes: List[Pipe], pairs: List[PipePair]) -> Image.
     # Dimension line between each pair, drawn across the shared stretch of run.
     for pr in pairs:
         a, b = by_id[pr.a], by_id[pr.b]
-        colour = WARN if pr.flagged else DIM
+        colour = WARN if pr.flagged else (OTHER if pr.status == "overlap" else DIM)
         (ax, ay), (bx, by) = a.center_px, b.center_px
         if pr.orientation == "horizontal":
             x = (max(a.box[0], b.box[0]) + min(a.box[2], b.box[2])) / 2
@@ -124,5 +124,6 @@ def draw(image: Image.Image, pipes: List[Pipe], pairs: List[PipePair]) -> Image.
             r = lw * 2
             d.ellipse((px - r, py - r, px + r, py + r), fill=colour)
         mid = ((p1[0] + p2[0]) / 2 + 6, (p1[1] + p2[1]) / 2 - 8)
-        _label(d, mid, f"{pr.spacing_mm:.0f} c-c / {pr.clearance_mm:.0f} gap mm", colour, font)
+        gap = "overlap?" if pr.status == "overlap" else f"{pr.clearance_mm:.0f} gap mm"
+        _label(d, mid, f"{pr.spacing_mm:.0f} c-c / {gap}", colour, font)
     return out

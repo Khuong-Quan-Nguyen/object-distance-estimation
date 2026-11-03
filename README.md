@@ -105,6 +105,12 @@ python scan.py path\to\photos --mode reference --od-mm 168.3     # no depth mode
 
 `scan.py` writes `runs/scan/annotated/*.jpg`, `pipes.csv`, `pairs.csv`, and `summary.json`.
 
+## Deploying
+
+The static page goes on **Vercel**. The model API (PyTorch, too big for
+Vercel's 250 MB function limit) goes on a free **Hugging Face Space** via
+the included `Dockerfile`. Step-by-step instructions are in [DEPLOY.md](DEPLOY.md).
+
 ## Layout
 
 ```
@@ -113,6 +119,8 @@ pipeline/        collect_images.py · autolabel.py · train.py
 backend/main.py  FastAPI: /api/analyze, /api/labels, serves frontend/
 frontend/        index.html (inspection) · review.html (annotation review)
 scan.py          batch CLI
+Dockerfile       API image (CPU) for Hugging Face Spaces / Render / Railway
+vercel.json      static frontend deploy (scripts/vercel-build.sh writes config.js)
 tests/           geometry unit tests
 ```
 

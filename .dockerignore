@@ -1,0 +1,12 @@
+**/venv/
+**/.venv/
+**/__pycache__/
+.git/
+.pytest_cache/
+data/
+runs/
+weights/
+images/
+models/*
+!models/.gitkeep
+!models/pipe_yolov8n.pt

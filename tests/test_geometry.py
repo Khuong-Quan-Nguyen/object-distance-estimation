@@ -83,6 +83,17 @@ def test_tight_clearance_is_flagged():
     assert pair.flagged
 
 
+def test_negative_clearance_is_overlap_not_flagged():
+    # Centrelines 80 mm apart can't hold two 114 mm pipes: a detection error.
+    boxes = [project_horizontal(0.0, 2.0), project_horizontal(0.08, 2.0)]
+    pipes = build_pipes(boxes, [0.9, 0.9])
+    locate_pipes(pipes, CAM, od_mm=114.3)
+    [(a, b)] = neighbour_pairs(pipes)
+    pair = pair_spacing(a, b)
+    assert pair.clearance_mm < 0
+    assert pair.status == "overlap" and not pair.flagged
+
+
 def test_pipes_that_do_not_run_alongside_are_not_paired():
     boxes = [
         project_horizontal(0.0, 3.0, x_from=-1.5, x_to=-0.5),
