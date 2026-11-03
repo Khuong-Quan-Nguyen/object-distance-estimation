@@ -70,7 +70,9 @@ Give it at least 2 GB RAM.
 3. **Environment Variables** → add `PIPESPACING_API` =
    `https://<user>-pipespacing.hf.space` (no trailing slash needed).
 4. Deploy. The build (`scripts/vercel-build.sh`) writes that URL into
-   `config.js`, removes `review.html`, and fails loudly if the variable is missing.
+   `config.js` and removes `review.html`. Without the variable the build still
+   succeeds, and the page shows "api: not configured". Add the variable later
+   and redeploy (Deployments → ⋯ → Redeploy).
 
 Every push to `main` redeploys automatically. If you change the API URL,
 redeploy so `config.js` is regenerated.
